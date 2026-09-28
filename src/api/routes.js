@@ -1,0 +1,66 @@
+import { providers } from '../providers/index.js';
+import { filterToOptionable } from '../providers/universe.js';
+import { dequeueBatch, enqueue, markProcessed, queueStatus } from '../engine/queue.js';
+import { runPipelineForBatch } from '../engine/pipeline.js';
+import { getMarketStatus } from '../engine/marketHours.js';
+import { listRecentJournal } from '../journal/journal.js';
+import { resolveTheme, DEFAULT_TEXT } from '../config/theme.js';
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+}
+
+/** GET /api/status */
+export async function handleStatus(env) {
+  const q = env.QUEUE_KV ? await queueStatus(env.QUEUE_KV) : { depth: 0, oldestAgeMs: 0, itemsNearRetryLimit: 0 };
+  return json({
+    marketStatus: getMarketStatus(),
+    queue: q,
+    providers: {
+      quotes: env.TRADIER_TOKEN ? 'configured' : 'missing TRADIER_TOKEN',
+      catalysts: env.FINNHUB_API_KEY ? 'configured' : 'missing FINNHUB_API_KEY',
+      fallbackQuotes: env.ALPHAVANTAGE_KEY ? 'configured' : 'missing ALPHAVANTAGE_KEY (optional)',
+    },
+    now: Date.now(),
+  });
+}
+
+/**
+ * GET /api/setups
+ * Triggers a bounded scan pass over a batch dequeued from QUEUE_KV. If the
+ * queue is empty (e.g. first run), seeds it from the universe provider.
+ */
+export async function handleSetups(env) {
+  if (!env.QUEUE_KV) return json({ error: 'QUEUE_KV not bound', setups: [] }, 500);
+  let status = await queueStatus(env.QUEUE_KV);
+  if (status.depth === 0) {
+    const universeRes = await providers.universe.getUniverse(env);
+    if (!universeRes.ok) {
+      return json({ error: `Universe unavailable: ${universeRes.reason}`, setups: [] }, 502);
+    }
+    const optionable = await filterToOptionable(universeRes.data, providers.options, env.CACHE_KV, env, 150);
+    for (const ticker of optionable) await enqueue(env.QUEUE_KV, ticker);
+  }
+
+  const batch = await dequeueBatch(env.QUEUE_KV, 25);
+  if (batch.length === 0) {
+    return json({ setups: [], marketStatus: getMarketStatus(), note: 'Queue empty and universe fetch returned nothing yet.' });
+  }
+  const { setups, errors, marketStatus } = await runPipelineForBatch(batch.map((b) => b.ticker), env);
+  for (const b of batch) await markProcessed(env.QUEUE_KV, b.ticker, true); // processed this cycle either way; re-enqueue happens on next universe refresh
+  return json({ setups, marketStatus, scannedCount: batch.length, errorCount: errors.length });
+}
+
+/** GET /api/journal */
+export async function handleJournal(env) {
+  if (!env.JOURNAL_KV) return json({ error: 'JOURNAL_KV not bound', entries: [] }, 500);
+  const entries = await listRecentJournal(env.JOURNAL_KV, 50);
+  return json({ entries });
+}
+
+/** GET /api/config?theme=<preset> */
+export async function handleConfig(url) {
+  const presetName = url.searchParams.get('theme');
+  const theme = resolveTheme(presetName);
+  return json({ theme, text: DEFAULT_TEXT });
+}

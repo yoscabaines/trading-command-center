@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Trade Command Center</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--panel-bg, #0a0e14);
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height);
+    min-height: 100vh;
+  }
+  body.bg-gradient { background: var(--gradient, none); }
+  body.bg-image { background-size: var(--image-size); background-position: var(--image-position); }
+  a { color: inherit; }
+  .page { max-width: var(--page-max-width); margin: 0 auto; padding: var(--page-padding); }
+  header.app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    height: var(--header-height); gap: 16px; flex-wrap: wrap;
+  }
+  .brand { display: flex; flex-direction: column; }
+  .brand .name { font-size: var(--ticker-size); font-weight: var(--font-weight-bold); letter-spacing: var(--letter-spacing); }
+  .brand .sub { font-size: var(--label-size); color: var(--text-secondary); text-transform: uppercase; }
+  .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .status-pill {
+    font-size: var(--label-size); padding: 4px 10px; border-radius: var(--badge-radius);
+    background: var(--badge-bg); color: var(--badge-text); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .status-pill.open { background: color-mix(in srgb, var(--bullish) 20%, transparent); color: var(--bullish); }
+  .status-pill.closed { background: color-mix(in srgb, var(--bearish) 20%, transparent); color: var(--bearish); }
+  button {
+    font-family: inherit; font-size: var(--button-size); font-weight: var(--font-weight-medium);
+    background: var(--button-bg); color: var(--button-text); border: none;
+    border-radius: var(--button-radius); padding: 9px 16px; cursor: pointer;
+    transition: var(--hover-transition);
+  }
+  button:hover { background: var(--button-hover-bg); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .meta-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0 20px; color: var(--text-secondary); font-size: var(--font-size-sm); }
+  .grid {
+    display: grid; grid-template-columns: var(--grid-columns); gap: var(--card-gap);
+  }
+  .card {
+    background: var(--card-bg); border: var(--card-border); border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow); padding: var(--card-padding); transition: var(--hover-transition);
+  }
+  .card:hover { background: var(--card-hover-bg); }
+  .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .ticker { font-size: var(--card-title-size); font-weight: var(--font-weight-bold); }
+  .bias-badge { font-size: var(--label-size); padding: 3px 9px; border-radius: var(--badge-radius); text-transform: uppercase; font-weight: var(--font-weight-bold); }
+  .bias-badge.bullish { background: color-mix(in srgb, var(--bullish) 18%, transparent); color: var(--bullish); }
+  .bias-badge.bearish { background: color-mix(in srgb, var(--bearish) 18%, transparent); color: var(--bearish); }
+  .setup-type { color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: 10px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; font-size: var(--font-size-sm); padding: 4px 0; border-top: 1px solid var(--divider); }
+  .row .label { color: var(--text-muted); text-transform: uppercase; font-size: var(--label-size); letter-spacing: 0.04em; }
+  .row .value { text-align: right; }
+  .tps { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .tp-chip { background: color-mix(in srgb, var(--target-color) 15%, transparent); color: var(--target-color); font-size: var(--label-size); padding: 2px 8px; border-radius: var(--badge-radius); }
+  .catalyst-line { margin-top: 10px; font-size: var(--font-size-sm); color: var(--text-secondary); border-top: 1px solid var(--divider); padding-top: 8px; }
+  .state-tag { font-size: var(--label-size); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .empty, .loading, .error { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+  .error { color: var(--error); }
+  footer { text-align: center; color: var(--text-muted); font-size: var(--font-size-sm); padding: 30px 0; }
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: 1fr; }
+    header.app-header { height: auto; padding: 16px 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header class="app-header">
+      <div class="brand">
+        <span class="name" id="brandName"></span>
+        <span class="sub" id="brandSub"></span>
+      </div>
+      <div class="header-actions">
+        <span class="status-pill" id="marketStatusPill">…</span>
+        <span class="status-pill" id="connectionPill">…</span>
+        <button id="scanBtn"></button>
+        <button id="refreshBtn"></button>
+      </div>
+    </header>
+    <div class="meta-row">
+      <span id="lastUpdated"></span>
+      <span id="freshnessNote"></span>
+    </div>
+    <main id="main"><div class="loading" id="loadingState"></div></main>
+    <footer id="footerText"></footer>
+  </div>
+
+<script>
+const API = { config: '/api/config', status: '/api/status', setups: '/api/setups', journal: '/api/journal' };
+let THEME = null, TEXT = null;
+
+function applyTheme(theme) {
+  const cssVarMap = {};
+  for (const group of Object.values(theme)) {
+    if (typeof group !== 'object' || Array.isArray(group)) continue;
+    for (const [k, v] of Object.entries(group)) {
+      if (Array.isArray(v) || typeof v === 'boolean') continue;
+      const cssVar = '--' + k.replace(/([A-Z])/g, '-$1').toLowerCase();
+      document.documentElement.style.setProperty(cssVar, v);
+    }
+  }
+  document.title = theme.branding.browserTitle;
+  if (theme.background.mode === 'gradient') {
+    document.documentElement.style.setProperty('--gradient', theme.background.gradient);
+    document.body.classList.add('bg-gradient');
+  } else if (theme.background.mode === 'image' && theme.background.image) {
+    document.body.style.backgroundImage = `linear-gradient(${theme.background.overlay}, ${theme.background.overlay}), url(${theme.background.image})`;
+    document.body.classList.add('bg-image');
+  } else {
+    document.body.style.background = theme.background.solid;
+  }
+}
+
+function applyText(text) {
+  document.getElementById('brandName').textContent = THEME.branding.headerText;
+  document.getElementById('brandSub').textContent = THEME.branding.subtitle;
+  document.getElementById('scanBtn').textContent = text.scanButton;
+  document.getElementById('refreshBtn').textContent = text.refreshButton;
+  document.getElementById('loadingState').textContent = text.loading;
+  document.getElementById('footerText').textContent = THEME.branding.footerText || '';
+}
+
+function marketPillText(status) {
+  if (status.status === 'regular') return { cls: 'open', text: TEXT.marketOpen };
+  if (status.status === 'premarket') return { cls: 'closed', text: TEXT.marketPremarket };
+  if (status.status === 'after-hours') return { cls: 'closed', text: TEXT.marketAfterHours };
+  return { cls: 'closed', text: TEXT.marketClosed };
+}
+
+function renderSetupCard(s) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  const tps = (s.targets || []).map(t => `<span class="tp-chip">$${t}</span>`).join('');
+  el.innerHTML = `
+    <div class="card-top">
+      <span class="ticker">${s.ticker}</span>
+      <span class="bias-badge ${s.bias}">${s.bias}</span>
+    </div>
+    <div class="setup-type">${s.setupType} · <span class="state-tag">${s.state}</span></div>
+    <div class="row"><span class="label">${TEXT.entryLabel}</span><span class="value">${s.trigger}</span></div>
+    <div class="row"><span class="label">${TEXT.confirmationLabel}</span><span class="value">${s.confirmation}</span></div>
+    <div class="row"><span class="label">${TEXT.invalidationLabel}</span><span class="value">${s.invalidation}</span></div>
+    <div class="row"><span class="label">${s.optionSelection?.contractType === 'call' ? TEXT.callsLabel : TEXT.putsLabel}</span>
+      <span class="value">$${s.optionSelection?.preferredStrike ?? '—'} · ${s.optionSelection?.expiration ?? '—'}</span></div>
+    <div class="row"><span class="label">${TEXT.tpsLabel}</span></div>
+    <div class="tps">${tps}</div>
+    ${s.catalyst ? `<div class="catalyst-line">${TEXT.catalystLabel}: ${s.catalyst.text}</div>` : ''}
+  `;
+  return el;
+}
+
+async function fetchJSON(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+async function loadConfig() {
+  const cfg = await fetchJSON(API.config);
+  THEME = cfg.theme; TEXT = cfg.text;
+  applyTheme(THEME); applyText(TEXT);
+}
+
+async function refreshStatus() {
+  try {
+    const s = await fetchJSON(API.status);
+    const pill = marketPillText(s.marketStatus);
+    const mEl = document.getElementById('marketStatusPill');
+    mEl.textContent = pill.text; mEl.className = 'status-pill ' + pill.cls;
+    document.getElementById('connectionPill').textContent = TEXT.connectionOk;
+    document.getElementById('connectionPill').className = 'status-pill open';
+  } catch (e) {
+    document.getElementById('connectionPill').textContent = TEXT.connectionDown;
+    document.getElementById('connectionPill').className = 'status-pill closed';
+  }
+}
+
+async function loadSetups(triggerScan) {
+  const main = document.getElementById('main');
+  main.innerHTML = `<div class="loading">${TEXT.loading}</div>`;
+  try {
+    const data = await fetchJSON(API.setups);
+    document.getElementById('lastUpdated').textContent = `${TEXT.lastUpdated}: ${new Date().toLocaleTimeString()}`;
+    if (!data.setups || data.setups.length === 0) {
+      main.innerHTML = `<div class="empty"><div>${TEXT.noSetups}</div><div style="margin-top:6px;font-size:var(--font-size-sm)">${TEXT.emptyStateSub}</div></div>`;
+      return;
+    }
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    for (const s of data.setups) grid.appendChild(renderSetupCard(s));
+    main.innerHTML = '';
+    main.appendChild(grid);
+  } catch (e) {
+    main.innerHTML = `<div class="error">${TEXT.errorScan}</div>`;
+  }
+}
+
+async function init() {
+  await loadConfig();
+  await refreshStatus();
+  await loadSetups();
+  document.getElementById('scanBtn').addEventListener('click', () => loadSetups(true));
+  document.getElementById('refreshBtn').addEventListener('click', () => { refreshStatus(); loadSetups(); });
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+name = "trading-command-center"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ---------------------------------------------------------------------------
+# KV namespaces. Create these with:
+#   wrangler kv namespace create SETUPS_KV
+#   wrangler kv namespace create JOURNAL_KV
+#   wrangler kv namespace create QUEUE_KV
+#   wrangler kv namespace create CACHE_KV
+# then paste the returned ids below.
+# ---------------------------------------------------------------------------
+kv_namespaces = [
+  { binding = "SETUPS_KV",  id = "REPLACE_WITH_SETUPS_KV_ID" },
+  { binding = "JOURNAL_KV", id = "REPLACE_WITH_JOURNAL_KV_ID" },
+  { binding = "QUEUE_KV",   id = "REPLACE_WITH_QUEUE_KV_ID" },
+  { binding = "CACHE_KV",   id = "REPLACE_WITH_CACHE_KV_ID" },
+]
+
+# ---------------------------------------------------------------------------
+# Scheduled scans. Cron is UTC. These times approximate:
+#   12:00 UTC ~ 8:00am ET (premarket scan)
+#   14:35 UTC ~ 10:35am ET (mid-morning re-scan)
+#   19:45 UTC ~ 3:45pm ET (pre-close evaluation)
+# Adjust for DST yourself — Workers cron does not know about ET/DST, the
+# marketHours module compensates at runtime (see src/engine/marketHours.js).
+# ---------------------------------------------------------------------------
+[triggers]
+crons = ["0 12 * * 1-5", "35 14 * * 1-5", "45 19 * * 1-5"]
+
+# Allows `import html from './ui/index.html'` to pull in the raw file as a
+# string at build time (Wrangler's text module rule).
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[vars]
+# Non-secret config. Real secrets go in `wrangler secret put NAME`, never here.
+APP_ENV = "development"
+
+# Secrets (set via `wrangler secret put <NAME>`, documented in README):
+#   TRADIER_TOKEN      - options chains + quotes (sandbox or production)
+#   FINNHUB_API_KEY    - news / earnings / analyst catalysts
+#   ALPHAVANTAGE_KEY   - fallback quotes / fundamentals (optional)
