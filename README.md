@@ -20,9 +20,8 @@ src/
   config/theme.js          Theme + UI-text system (see section 9)
   providers/                Data-source abstraction layer
     interfaces.js            Contracts every provider implements
-    tradier.js                Quotes, bars, option chains (Tradier API)
+    alpaca.js                Quotes and bars (Alpaca Market Data API)
     finnhub.js                 News, earnings, upgrades/downgrades (Finnhub API)
-    alphavantage.js             Fallback quotes only (Alpha Vantage API)
     universe.js                  Optionable-universe construction (see section 8)
     index.js                      Wires concrete providers to their roles
   engine/
@@ -57,13 +56,7 @@ cp .env.example .dev.vars      # for local `wrangler dev`, see section 6
 
 | Provider | Used for | Docs | Required? |
 |---|---|---|---|
-| Tradier | Quotes, intraday bars, option chains/expirations | https://documentation.tradier.com/brokerage-api | Yes — nothing works without this |
-| Finnhub | News, earnings calendar, analyst actions | https://finnhub.io/docs/api | Recommended — without it, catalysts are simply omitted (never fabricated) |
-| Alpha Vantage | Fallback quotes only, if Tradier is down | https://www.alphavantage.co/documentation/ | Optional |
-
-Tradier offers a free **sandbox** environment (delayed data, paper trading
 account) that works for development. Set `APP_ENV = "production"` in
-`wrangler.toml` `[vars]` once you have a funded/production Tradier account
 for live data.
 
 ## 4. Cloudflare setup
@@ -82,9 +75,7 @@ Paste each returned `id` into the matching `kv_namespaces` entry in
 ## 5. Secrets
 
 ```bash
-wrangler secret put TRADIER_TOKEN
 wrangler secret put FINNHUB_API_KEY
-wrangler secret put ALPHAVANTAGE_KEY   # optional
 ```
 
 Never put these in `wrangler.toml` `[vars]` — that file is not for secrets.
@@ -97,9 +88,7 @@ wrangler dev
 
 Create `.dev.vars` (gitignored) with the same secret names for local runs:
 ```
-TRADIER_TOKEN=your_sandbox_token
 FINNHUB_API_KEY=your_key
-ALPHAVANTAGE_KEY=your_key
 ```
 Visit `http://localhost:8787`. `/api/setups` will run a live (sandbox-data)
 scan pass against whatever KV state exists locally.
@@ -125,7 +114,7 @@ faking it:
 1. `providers/universe.js` pulls the **real, free** Nasdaq Trader symbol
    directories (`nasdaqlisted.txt`, `otherlisted.txt`) — every listed
    equity/ETF, which is a superset of the optionable universe.
-2. `filterToOptionable()` cross-checks candidates against Tradier's
+2. The scanner evaluates the broad listed-equity universe without querying option chains.
    options-expirations endpoint and caches each verdict in `CACHE_KV` for
    24h, capped at `maxNewChecksPerRun` fresh checks per invocation to
    protect rate limits. The premarket cron run seeds this over the course
@@ -209,7 +198,7 @@ Checked and fixed before calling this done:
 
 ## 14. Known limitations (honest, not hedged)
 
-- **Not deployed or run against live Cloudflare/Tradier/Finnhub in this
+- **Not deployed or run against live Cloudflare/Alpaca/Finnhub in this
   build.** I have no network access in the sandbox this was built in, so
   `wrangler deploy` and every live API call are untested by me. The code
   paths are real and match the documented APIs, but you are the first one
@@ -218,7 +207,7 @@ Checked and fixed before calling this done:
   section 8 — the free path builds the optionable universe over several
   premarket cycles rather than instantly, unless you add a paid
   reference-data provider.
-- **Tradier sandbox data is delayed**, and even production Tradier quotes
+- **Alpaca's free equity feed uses IEX market data**, so it is not a consolidated all-exchange feed.
   require a market-data entitlement for true real-time — the freshness
   engine labels this correctly but can't make delayed data live.
 - **`supportResistance()` in `technical.js` is a simple local-extrema

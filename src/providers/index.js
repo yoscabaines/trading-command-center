@@ -1,24 +1,19 @@
-// Single place that wires which concrete provider implements each role.
-// Swap a provider by changing an import + instantiation here — nothing
-// else in the codebase references a provider class by name.
-import { TradierQuoteProvider, TradierOptionsProvider } from './tradier.js';
-import { AlphaVantageQuoteProvider } from './alphavantage.js';
+// Central provider wiring.
+// Market data comes from Alpaca.
+// Catalysts come from Finnhub.
+// Options chains are intentionally not required.
+
+import { AlpacaQuoteProvider } from './alpaca.js';
 import { FinnhubCatalystProvider } from './finnhub.js';
 import { NasdaqTraderUniverseProvider } from './universe.js';
 
 export const providers = {
   universe: new NasdaqTraderUniverseProvider(),
-  quotesPrimary: new TradierQuoteProvider(),
-  quotesFallback: new AlphaVantageQuoteProvider(),
-  options: new TradierOptionsProvider(),
+  quotesPrimary: new AlpacaQuoteProvider(),
   catalysts: new FinnhubCatalystProvider(),
 };
 
-/** Tries the primary quote provider, falls back on failure. Never fabricates. */
+/** Gets an underlying quote. Never fabricates data. */
 export async function getQuoteWithFallback(ticker, env) {
-  const primary = await providers.quotesPrimary.getQuote(ticker, env);
-  if (primary.ok) return primary;
-  const fallback = await providers.quotesFallback.getQuote(ticker, env);
-  if (fallback.ok) return fallback;
-  return { ok: false, reason: `Both quote providers failed: ${primary.reason} / ${fallback.reason}`, freshness: 'unavailable' };
+  return providers.quotesPrimary.getQuote(ticker, env);
 }

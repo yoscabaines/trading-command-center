@@ -74,9 +74,17 @@ export async function runPipelineForBatch(tickers, env) {
         const targets = calculateTargets(setup, entryPrice, ctx);
         if (!targets || targets.length !== 4) continue;
 
-        // Stage 6: options selection — required to be actionable
+        // Stage 6: strike recommendation.
+        // This does not query an option chain. The user verifies the
+        // actual live contract in their broker.
         const tradeHorizon = catalyst?.type === 'earnings' ? 'earnings' : 'day';
-        const optionSelection = await selectOptionsForSetup(setup, entryPrice, tradeHorizon, catalyst?.timestamp, env);
+        const optionSelection = selectOptionsForSetup(
+          setup,
+          entryPrice,
+          tradeHorizon,
+          catalyst?.timestamp,
+          env,
+        );
         if (!optionSelection) continue;
 
         const fullSetup = { ...setup, targets, optionSelection, catalyst, entryPrice };

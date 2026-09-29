@@ -2,7 +2,7 @@
 // PROVIDER INTERFACES
 //
 // Every data source the app touches implements one of these shapes. This
-// lets you swap Tradier for Schwab, or Finnhub for Benzinga, by writing a
+// lets you swap market-data or catalyst providers without changing the scanner.
 // new file in this folder and changing one line in providers/index.js —
 // nothing in engine/ or api/ needs to change.
 //
@@ -44,16 +44,6 @@ export class QuoteProvider {
   async getBars(_ticker, _interval, _lookback, _env) { throw new Error('QuoteProvider.getBars not implemented'); }
 }
 
-/**
- * OptionsProvider — chains and per-contract Greeks/liquidity.
- * @interface
- * getChain(ticker, expiration): Promise<ProviderResult> // data: OptionContract[]
- * getExpirations(ticker): Promise<ProviderResult>        // data: string[] (YYYY-MM-DD)
- */
-export class OptionsProvider {
-  async getChain(_ticker, _expiration, _env) { throw new Error('OptionsProvider.getChain not implemented'); }
-  async getExpirations(_ticker, _env) { throw new Error('OptionsProvider.getExpirations not implemented'); }
-}
 
 /**
  * CatalystProvider — news, earnings, analyst actions, corporate events.

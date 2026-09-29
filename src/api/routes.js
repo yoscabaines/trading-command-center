@@ -1,5 +1,4 @@
 import { providers } from '../providers/index.js';
-import { filterToOptionable } from '../providers/universe.js';
 import { dequeueBatch, enqueue, markProcessed, queueStatus } from '../engine/queue.js';
 import { runPipelineForBatch } from '../engine/pipeline.js';
 import { getMarketStatus } from '../engine/marketHours.js';
@@ -30,16 +29,35 @@ export async function handleStatus(env) {
  * Triggers a bounded scan pass over a batch dequeued from QUEUE_KV. If the
  * queue is empty (e.g. first run), seeds it from the universe provider.
  */
-export async function handleSetups(env) {
+export async function handleSetups(env, url) {
   if (!env.QUEUE_KV) return json({ error: 'QUEUE_KV not bound', setups: [] }, 500);
+
+  const requestedTicker = url.searchParams.get('ticker')?.trim().toUpperCase();
+
+  if (requestedTicker) {
+    const { setups, errors, marketStatus } = await runPipelineForBatch(
+      [requestedTicker],
+      env,
+    );
+
+    return json({
+      setups,
+      marketStatus,
+      scannedCount: 1,
+      errorCount: errors.length,
+      ticker: requestedTicker,
+    });
+  }
+
   let status = await queueStatus(env.QUEUE_KV);
   if (status.depth === 0) {
     const universeRes = await providers.universe.getUniverse(env);
     if (!universeRes.ok) {
       return json({ error: `Universe unavailable: ${universeRes.reason}`, setups: [] }, 502);
     }
-    const optionable = await filterToOptionable(universeRes.data, providers.options, env.CACHE_KV, env, 150);
-    for (const ticker of optionable) await enqueue(env.QUEUE_KV, ticker);
+    const optionable = universeRes.data;
+    const seedBatch = optionable.slice(0, 100);
+    for (const ticker of seedBatch) await enqueue(env.QUEUE_KV, ticker);
   }
 
   const batch = await dequeueBatch(env.QUEUE_KV, 25);

@@ -41,6 +41,4 @@ fallthrough = true
 APP_ENV = "development"
 
 # Secrets (set via `wrangler secret put <NAME>`, documented in README):
-#   TRADIER_TOKEN      - options chains + quotes (sandbox or production)
 #   FINNHUB_API_KEY    - news / earnings / analyst catalysts
-#   ALPHAVANTAGE_KEY   - fallback quotes / fundamentals (optional)

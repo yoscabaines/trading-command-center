@@ -127,7 +127,7 @@ test('theme: unknown preset falls back to default', () => {
   assert.equal(theme.colors.pageBg, '#0a0e14');
 });
 
-test('options: second-best strike is independently liquid, not just cheaper', () => {
+test('options: second-best strike is independently recommended', () => {
   const chain = [
     { symbol: 'A', type: 'call', strike: 101, bid: 0.05, ask: 0.06, volume: 500, openInterest: 1000, delta: 0.3 },
     { symbol: 'B', type: 'call', strike: 102, bid: 0.5, ask: 5.0, volume: 5, openInterest: 5, delta: 0.3 }, // illiquid, wide spread

@@ -1,7 +1,6 @@
 import indexHtml from './ui/index.html';
 import { handleStatus, handleSetups, handleJournal, handleConfig } from './api/routes.js';
 import { providers } from './providers/index.js';
-import { filterToOptionable } from './providers/universe.js';
 import { enqueue, dequeueBatch, markProcessed } from './engine/queue.js';
 import { runPipelineForBatch } from './engine/pipeline.js';
 import { getMarketStatus } from './engine/marketHours.js';
@@ -16,7 +15,7 @@ export default {
       return new Response(indexHtml, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
     if (url.pathname === '/api/status') return handleStatus(env);
-    if (url.pathname === '/api/setups') return handleSetups(env);
+    if (url.pathname === '/api/setups') return handleSetups(env, url);
     if (url.pathname === '/api/journal') return handleJournal(env);
     if (url.pathname === '/api/config') return handleConfig(url);
 
@@ -37,7 +36,7 @@ export default {
     if (status.status === 'premarket') {
       const universeRes = await providers.universe.getUniverse(env);
       if (universeRes.ok && env.QUEUE_KV) {
-        const optionable = await filterToOptionable(universeRes.data, providers.options, env.CACHE_KV, env, 200);
+        const optionable = universeRes.data;
         for (const ticker of optionable) await enqueue(env.QUEUE_KV, ticker);
       }
       return;
