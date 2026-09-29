@@ -1,5 +1,5 @@
 import { providers } from '../providers/index.js';
-import { dequeueBatch, enqueueBatch, markProcessed, queueStatus } from '../engine/queue.js';
+import { dequeueBatch, enqueueBatch, markProcessedBatch, queueStatus } from '../engine/queue.js';
 import { runPipelineForBatch } from '../engine/pipeline.js';
 import { getMarketStatus } from '../engine/marketHours.js';
 import { listRecentJournal } from '../journal/journal.js';
@@ -96,7 +96,7 @@ export async function handleSetups(env, url) {
     return json({ setups: [], marketStatus: getMarketStatus(), note: 'Queue empty and universe fetch returned nothing yet.' });
   }
   const { setups, errors, marketStatus } = await runPipelineForBatch(batch.map((b) => b.ticker), env);
-  for (const b of batch) await markProcessed(env.QUEUE_KV, b.ticker, true); // processed this cycle either way; re-enqueue happens on next universe refresh
+  await markProcessedBatch(env.QUEUE_KV, batch.map((b) => ({ ticker: b.ticker, succeeded: true }))); // processed this cycle; re-enqueue happens on next universe refresh
   return json({ setups, marketStatus, scannedCount: batch.length, errorCount: errors.length });
 }
 
