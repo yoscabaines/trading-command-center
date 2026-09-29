@@ -1,5 +1,5 @@
 import { providers } from '../providers/index.js';
-import { dequeueBatch, enqueue, markProcessed, queueStatus } from '../engine/queue.js';
+import { dequeueBatch, enqueueBatch, markProcessed, queueStatus } from '../engine/queue.js';
 import { runPipelineForBatch } from '../engine/pipeline.js';
 import { getMarketStatus } from '../engine/marketHours.js';
 import { listRecentJournal } from '../journal/journal.js';
@@ -50,14 +50,45 @@ export async function handleSetups(env, url) {
   }
 
   let status = await queueStatus(env.QUEUE_KV);
+
   if (status.depth === 0) {
     const universeRes = await providers.universe.getUniverse(env);
+
     if (!universeRes.ok) {
-      return json({ error: `Universe unavailable: ${universeRes.reason}`, setups: [] }, 502);
+      return json(
+        {
+          error: `Universe unavailable: ${universeRes.reason}`,
+          setups: [],
+        },
+        502,
+      );
     }
-    const optionable = universeRes.data;
-    const seedBatch = optionable.slice(0, 100);
-    for (const ticker of seedBatch) await enqueue(env.QUEUE_KV, ticker);
+
+    const universe = universeRes.data;
+    const cursorKey = 'universe:cursor';
+    const cursor = Number(
+      await env.CACHE_KV.get(cursorKey) || '0',
+    );
+
+    const seedSize = 100;
+    const seedBatch = universe.slice(
+      cursor,
+      cursor + seedSize,
+    );
+
+    if (seedBatch.length > 0) {
+      await enqueueBatch(env.QUEUE_KV, seedBatch);
+
+      const nextCursor =
+        cursor + seedBatch.length >= universe.length
+          ? 0
+          : cursor + seedBatch.length;
+
+      await env.CACHE_KV.put(
+        cursorKey,
+        String(nextCursor),
+      );
+    }
   }
 
   const batch = await dequeueBatch(env.QUEUE_KV, 25);
