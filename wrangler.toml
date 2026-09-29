@@ -12,10 +12,10 @@ compatibility_flags = ["nodejs_compat"]
 # then paste the returned ids below.
 # ---------------------------------------------------------------------------
 kv_namespaces = [
-  { binding = "SETUPS_KV",  id = "REPLACE_WITH_SETUPS_KV_ID" },
-  { binding = "JOURNAL_KV", id = "REPLACE_WITH_JOURNAL_KV_ID" },
-  { binding = "QUEUE_KV",   id = "REPLACE_WITH_QUEUE_KV_ID" },
-  { binding = "CACHE_KV",   id = "REPLACE_WITH_CACHE_KV_ID" },
+  { binding = "SETUPS_KV",  id = "5e8c2688b49942d0976fe3260265a0a9" },
+  { binding = "JOURNAL_KV", id = "fe3602acec4245e59f0a4ba51754dcfc" },
+  { binding = "QUEUE_KV",   id = "5dd7317b71df4793a0f15a1af9fa9731" },
+  { binding = "CACHE_KV",   id = "2c3b14d4fe6d4d848e6a34425d06ff3f" },
 ]
 
 # ---------------------------------------------------------------------------
