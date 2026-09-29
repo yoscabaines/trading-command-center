@@ -17,9 +17,9 @@ export async function handleStatus(env) {
     marketStatus: getMarketStatus(),
     queue: q,
     providers: {
-      quotes: env.TRADIER_TOKEN ? 'configured' : 'missing TRADIER_TOKEN',
+      quotes: env.ALPACA_API_KEY && env.ALPACA_API_SECRET ? 'configured' : 'missing ALPACA credentials',
       catalysts: env.FINNHUB_API_KEY ? 'configured' : 'missing FINNHUB_API_KEY',
-      fallbackQuotes: env.ALPHAVANTAGE_KEY ? 'configured' : 'missing ALPHAVANTAGE_KEY (optional)',
+      
     },
     now: Date.now(),
   });
