@@ -12,6 +12,7 @@
 //  7. Journal + store
 
 import { providers, getQuoteWithFallback } from '../providers/index.js';
+import { assessLiquidity } from './liquidity.js';
 import { buildTechnicalContext } from './technical.js';
 import { detectAllSetups, SETUP_STATE } from './setups/index.js';
 import { getPrimaryCatalyst } from './catalysts.js';
@@ -42,6 +43,13 @@ export async function runPipelineForBatch(tickers, env) {
       if (!quote.ok || !isDecisionGrade('quote', quote.sourceTimestamp)) continue;
       const dailyBarsRes = await providers.quotesPrimary.getBars(ticker, 'daily', 40 * 86400000, env);
       if (!dailyBarsRes.ok || dailyBarsRes.data.length < 15) continue;
+
+      const liquidity = assessLiquidity({
+        quote: quote.data,
+        dailyBars: dailyBarsRes.data,
+      });
+
+      if (!liquidity.eligible) continue;
       const gapPct = quote.data.open && dailyBarsRes.data.at(-2)?.close
         ? ((quote.data.open - dailyBarsRes.data.at(-2).close) / dailyBarsRes.data.at(-2).close) * 100
         : 0;
