@@ -18,6 +18,35 @@ export default {
     }
     if (url.pathname === '/api/status') return handleStatus(env);
 
+    if (url.pathname === '/api/ticker-debug') {
+      const daily = await providers.quotesPrimary.getBars(
+        'IWM',
+        'daily',
+        10 * 24 * 3600 * 1000,
+        env,
+      );
+
+      const intraday = await providers.quotesPrimary.getBars(
+        'IWM',
+        '1min',
+        24 * 3600 * 1000,
+        env,
+      );
+
+      return new Response(
+        JSON.stringify({
+          daily: daily?.data?.slice(-5) || [],
+          intraday: intraday?.data?.slice(-30) || [],
+        }),
+        {
+          headers: {
+            'content-type': 'application/json; charset=utf-8',
+            'cache-control': 'no-store',
+          },
+        },
+      );
+    }
+
     if (url.pathname === '/api/ticker') {
       const status = getMarketStatus();
 
