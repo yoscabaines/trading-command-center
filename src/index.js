@@ -38,16 +38,6 @@ export default {
 
       for (const ticker of symbols) {
         try {
-          const quote = await getQuoteWithFallback(ticker, env);
-
-          if (!quote?.ok || !quote.data) continue;
-
-          const price = Number(quote.data.price);
-
-          if (!Number.isFinite(price)) continue;
-
-          // Use daily bars to calculate the previous close.
-          // This works during market hours and after the market closes.
           const daily = await providers.quotesPrimary.getBars(
             ticker,
             'daily',
@@ -55,33 +45,64 @@ export default {
             env,
           );
 
-          let previousClose = null;
+          if (!daily?.ok || !Array.isArray(daily.data)) continue;
 
-          if (daily?.ok && Array.isArray(daily.data)) {
-            const bars = daily.data
-              .filter(b => Number.isFinite(Number(b.close)))
-              .sort((a, b) => new Date(a.time) - new Date(b.time));
+          const bars = daily.data
+            .filter(b => Number.isFinite(Number(b.close)))
+            .sort((a, b) => new Date(a.time) - new Date(b.time));
 
-            if (bars.length >= 2) {
-              previousClose = Number(bars[bars.length - 2].close);
+          if (bars.length < 2) continue;
+
+          const lastBar = bars[bars.length - 1];
+          const previousBar = bars[bars.length - 2];
+
+          const regularClose = Number(lastBar.close);
+          const previousClose = Number(previousBar.close);
+
+          if (!Number.isFinite(regularClose) ||
+              !Number.isFinite(previousClose)) {
+            continue;
+          }
+
+          let price = regularClose;
+
+          // During regular trading hours, use the live quote.
+          if (status.status === 'regular') {
+            const quote = await getQuoteWithFallback(ticker, env);
+
+            if (quote?.ok && quote.data) {
+              const livePrice = Number(quote.data.price);
+
+              if (Number.isFinite(livePrice)) {
+                price = livePrice;
+              }
             }
           }
 
-          const change =
-            Number.isFinite(previousClose)
-              ? price - previousClose
+          const change = regularClose - previousClose;
+          const changePct =
+            previousClose !== 0
+              ? (change / previousClose) * 100
               : null;
 
-          const changePct =
-            Number.isFinite(previousClose) && previousClose !== 0
-              ? (change / previousClose) * 100
+          // During regular hours, calculate the live intraday move.
+          const displayChange =
+            status.status === 'regular'
+              ? price - previousClose
+              : change;
+
+          const displayChangePct =
+            previousClose !== 0
+              ? (displayChange / previousClose) * 100
               : null;
 
           items.push({
             ticker,
             price,
-            change,
-            changePct,
+            change: displayChange,
+            changePct: displayChangePct,
+            regularClose,
+            previousClose,
           });
         } catch (error) {
           console.error(`Ticker failed for ${ticker}:`, error);
