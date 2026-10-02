@@ -60,6 +60,24 @@ export default {
 
           let regularClose = Number(dailyBars[dailyBars.length - 1].close);
 
+          if (ticker === 'IWM') {
+            console.log('IWM DAILY LAST:', JSON.stringify(dailyBars.slice(-3)));
+
+            const debugIntraday = await providers.quotesPrimary.getBars(
+              ticker,
+              '1min',
+              24 * 3600 * 1000,
+              env,
+            );
+
+            if (debugIntraday?.ok && Array.isArray(debugIntraday.data)) {
+              console.log(
+                'IWM 1MIN LAST 15:',
+                JSON.stringify(debugIntraday.data.slice(-15)),
+              );
+            }
+          }
+
           // Use today's 1-minute bars to get the actual regular-session
           // closing print instead of relying on the daily bar.
           const intraday = await providers.quotesPrimary.getBars(
