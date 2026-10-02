@@ -35,13 +35,14 @@ export async function handleSetups(env, url) {
   const requestedTicker = url.searchParams.get('ticker')?.trim().toUpperCase();
 
   if (requestedTicker) {
-    const { setups, errors, marketStatus } = await runPipelineForBatch(
+    const { setups, candidates, errors, marketStatus } = await runPipelineForBatch(
       [requestedTicker],
       env,
     );
 
     return json({
       setups,
+      candidates,
       marketStatus,
       scannedCount: 1,
       errorCount: errors.length,
@@ -93,11 +94,11 @@ export async function handleSetups(env, url) {
 
   const batch = await dequeueBatch(env.QUEUE_KV, 25);
   if (batch.length === 0) {
-    return json({ setups: [], marketStatus: getMarketStatus(), note: 'Queue empty and universe fetch returned nothing yet.' });
+    return json({ setups: [], candidates: [], marketStatus: getMarketStatus(), note: 'Queue empty and universe fetch returned nothing yet.' });
   }
-  const { setups, errors, marketStatus } = await runPipelineForBatch(batch.map((b) => b.ticker), env);
+  const { setups, candidates, errors, marketStatus } = await runPipelineForBatch(batch.map((b) => b.ticker), env);
   await markProcessedBatch(env.QUEUE_KV, batch.map((b) => ({ ticker: b.ticker, succeeded: true }))); // processed this cycle; re-enqueue happens on next universe refresh
-  return json({ setups, marketStatus, scannedCount: batch.length, errorCount: errors.length });
+  return json({ setups, candidates, marketStatus, scannedCount: batch.length, errorCount: errors.length });
 }
 
 /** GET /api/journal */

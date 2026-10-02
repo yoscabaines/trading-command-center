@@ -6,6 +6,7 @@ import { runPipelineForBatch } from './engine/pipeline.js';
 import { getMarketStatus } from './engine/marketHours.js';
 import { listRecentJournal, finalizeOutcome, evaluateAtClose } from './journal/journal.js';
 import { getQuoteWithFallback } from './providers/index.js';
+import { saveMorningWatchlist } from './engine/morning.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -35,10 +36,35 @@ export default {
 
     if (status.status === 'premarket') {
       const universeRes = await providers.universe.getUniverse(env);
+
       if (universeRes.ok && env.QUEUE_KV) {
         const optionable = universeRes.data;
-        for (const ticker of optionable) await enqueue(env.QUEUE_KV, ticker);
+
+        for (const ticker of optionable) {
+          await enqueue(env.QUEUE_KV, ticker);
+        }
+
+        const batch = await dequeueBatch(env.QUEUE_KV, 25);
+
+        if (batch.length > 0) {
+          const result = await runPipelineForBatch(
+            batch.map((b) => b.ticker),
+            env,
+          );
+
+          if (env.SETUPS_KV) {
+            await saveMorningWatchlist(
+              env.SETUPS_KV,
+              result.candidates,
+            );
+          }
+
+          for (const b of batch) {
+            await markProcessed(env.QUEUE_KV, b.ticker, true);
+          }
+        }
       }
+
       return;
     }
 
