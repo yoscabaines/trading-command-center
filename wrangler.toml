@@ -27,7 +27,11 @@ kv_namespaces = [
 # marketHours module compensates at runtime (see src/engine/marketHours.js).
 # ---------------------------------------------------------------------------
 [triggers]
-crons = ["0 12 * * 1-5", "35 14 * * 1-5", "45 19 * * 1-5"]
+crons = [
+  "0,10,20,30,40,50 12-14 * * 1-5",
+  "35 14 * * 1-5",
+  "45 19 * * 1-5"
+]
 
 # Allows `import html from './ui/index.html'` to pull in the raw file as a
 # string at build time (Wrangler's text module rule).
