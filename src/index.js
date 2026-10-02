@@ -35,15 +35,28 @@ export default {
     const status = getMarketStatus();
 
     if (status.status === 'premarket') {
-      const universeRes = await providers.universe.getUniverse(env);
+      const seedKey = `morning-seeded-${status.dateStr}`;
+      const alreadySeeded = env.CACHE_KV
+        ? await env.CACHE_KV.get(seedKey)
+        : null;
 
-      if (universeRes.ok && env.QUEUE_KV) {
-        const optionable = universeRes.data;
+      if (!alreadySeeded) {
+        const universeRes = await providers.universe.getUniverse(env);
 
-        for (const ticker of optionable) {
-          await enqueue(env.QUEUE_KV, ticker);
+        if (universeRes.ok && env.QUEUE_KV) {
+          for (const ticker of universeRes.data) {
+            await enqueue(env.QUEUE_KV, ticker);
+          }
+
+          if (env.CACHE_KV) {
+            await env.CACHE_KV.put(seedKey, '1', {
+              expirationTtl: 86400,
+            });
+          }
         }
+      }
 
+      if (env.QUEUE_KV) {
         const batch = await dequeueBatch(env.QUEUE_KV, 25);
 
         if (batch.length > 0) {
@@ -52,7 +65,7 @@ export default {
             env,
           );
 
-          if (env.SETUPS_KV) {
+          if (env.SETUPS_KV && result.candidates) {
             await saveMorningWatchlist(
               env.SETUPS_KV,
               result.candidates,
