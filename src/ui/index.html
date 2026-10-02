@@ -369,52 +369,6 @@
       }
     }
 
-    #marketTickerBar {
-      position: sticky;
-      top: 0;
-      z-index: 9999;
-      width: 100%;
-      height: 42px;
-      display: flex;
-      align-items: center;
-      overflow: hidden;
-      background: #000000;
-      border-bottom: 1px solid #252535;
-    }
-
-    #marketTickerLabel {
-      flex: 0 0 auto;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      padding: 0 15px;
-      background: #000000;
-      color: #ffffff;
-      border-right: 1px solid #252535;
-      font-size: 10px;
-      font-weight: 900;
-      letter-spacing: 1.5px;
-      z-index: 2;
-    }
-
-    #marketTickerViewport {
-      flex: 1;
-      height: 100%;
-      overflow: hidden;
-      white-space: nowrap;
-    }
-
-    #marketTickerTrack {
-      display: inline-flex;
-      align-items: center;
-      height: 100%;
-      padding-left: 100%;
-      animation: tickerMove 30s linear infinite;
-    }
-
-    #marketTickerTrack:hover {
-      animation-play-state: paused;
-    }
 
     .ticker-item {
       display: inline-flex;
@@ -438,11 +392,6 @@
     .ticker-loading {
       color: #8e8e9f;
     }
-
-    @keyframes tickerMove {
-      from {
-        transform: translateX(0);
-      }
       to {
         transform: translateX(-100%);
       }
@@ -453,14 +402,7 @@
 
 <body>
 
-  <div id="marketTickerBar">
-    <div id="marketTickerLabel">MARKET</div>
-    <div id="marketTickerViewport">
-      <div id="marketTickerTrack">
-        <span class="ticker-loading">IWM Loading...</span>
-      </div>
-    </div>
-  </div>
+
 
   <div class="app">
 
@@ -654,132 +596,8 @@
     }
 
 
-    async function loadMarketTicker() {
-      const track = document.getElementById("marketTickerTrack");
-
-      if (!track) return;
-
-      try {
-        const response = await fetch("/api/ticker", {
-          cache: "no-store"
-        });
-
-        if (!response.ok) {
-          throw new Error("Ticker API error: " + response.status);
-        }
-
-        const data = await response.json();
-        const items = Array.isArray(data.items) ? data.items : [];
-
-        if (!items.length) {
-          track.innerHTML = `
-            <span class="ticker-item">
-              <strong>IWM</strong>
-              <span class="ticker-flat">No quote available</span>
-            </span>
-          `;
-          return;
-        }
-
-        const html = items.map(item => {
-          const price = Number(item.price);
-          const change = Number(item.change);
-          const changePct = Number(item.changePct);
-
-          const sign = change >= 0 ? "+" : "";
-          const direction =
-            change > 0
-              ? "ticker-up"
-              : change < 0
-                ? "ticker-down"
-                : "ticker-flat";
-
-          return `
-            <span class="ticker-item">
-              <strong>${item.ticker}</strong>
-              <span>${Number.isFinite(price) ? price.toFixed(2) : "—"}</span>
-              <span class="${direction}">
-                ${Number.isFinite(change) ? sign + change.toFixed(2) : "—"}
-              </span>
-              <span class="${direction}">
-                ${Number.isFinite(changePct) ? sign + changePct.toFixed(2) + "%" : "—"}
-              </span>
-            </span>
-          `;
-        }).join("");
-
-        // Duplicate it so the ticker has continuous content.
-        track.innerHTML = html + html;
-
-      } catch (error) {
-        console.error("Ticker error:", error);
-
-        track.innerHTML = `
-          <span class="ticker-item">
-            <strong>IWM</strong>
-            <span class="ticker-flat">Market data unavailable</span>
-          </span>
-        `;
-      }
-    }
-
-    async function loadDashboard() {
-      try {
-        const [setupsResponse, statusResponse] = await Promise.all([
-          fetch(API.setups),
-          fetch(API.status)
-        ]);
-
-        const setups = await setupsResponse.json();
-        const status = await statusResponse.json();
-
-        const topWatch =
-          setups.candidates?.topWatch || [];
-
-        const additionalWatch =
-          setups.candidates?.additionalWatch || [];
-
-        renderList(
-          'topWatch',
-          'topCount',
-          topWatch
-        );
-
-        renderList(
-          'additionalWatch',
-          'additionalCount',
-          additionalWatch
-        );
-
-        const marketStatus =
-          status?.status ||
-          setups?.marketStatus?.status ||
-          'unknown';
-
-        document.getElementById('marketStatus').textContent =
-          marketStatus.replace('-', ' ');
-      } catch (error) {
-        console.error(error);
-
-        document.getElementById('topWatch').innerHTML = `
-          <div class="empty">
-            Unable to load scanner data.
-          </div>
-        `;
-
-        document.getElementById('additionalWatch').innerHTML = `
-          <div class="empty">
-            Check the Worker/API connection.
-          </div>
-        `;
-      }
-    }
-
-    loadDashboard();
-    loadMarketTicker();
 
     setInterval(loadDashboard, 60000);
-    setInterval(loadMarketTicker, 60000);
   </script>
 </body>
 </html>
