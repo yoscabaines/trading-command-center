@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+  
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Trading Command Center</title>
@@ -400,58 +401,171 @@
 
   </style>
 
-<style id="futuristicBubbleFont">
+
+
+
+<style id="unifiedBubbleTypography">
+  /* ONE FONT FOR THE ENTIRE COMMAND CENTER */
+  html,
+  body,
+  button,
+  input,
+  select,
+  textarea,
+  .app,
+  .header,
+  .hero,
+  .hero *,
+  .section,
+  .section *,
   .bubble,
   .bubble *,
-  .ticker,
-  .symbol,
+  .detail-card,
+  .detail-card *,
+  .category,
+  .category *,
+  .badge,
+  .label,
+  .value,
+  .level,
+  .tp,
+  .option,
+  .status,
+  .empty-state,
+  .market-state,
+  .footer {
+    font-family: 'Audiowide', sans-serif !important;
+  }
+
+  /* Main page title */
   .hero-title,
-  .category-title {
-    font-family: 'Audiowide', 'Nunito', sans-serif;
-  }
-
-  .bubble .symbol,
-  .bubble .ticker,
-  .ticker-symbol {
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    text-shadow:
-      0 0 8px currentColor,
-      0 0 18px currentColor;
-  }
-
-  .bubble .symbol {
-    font-size: 1.15rem;
+  h1 {
+    font-size: clamp(2rem, 5vw, 4rem) !important;
+    line-height: 1.08;
+    letter-spacing: 0.045em;
     font-weight: 400;
   }
 
-  .bubble .direction,
-  .bubble .badge,
-  .bubble .category {
-    font-family: 'Nunito', sans-serif;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  /* Major section headings */
+  h2,
+  .section-title,
+  .category-title {
+    font-size: clamp(1.15rem, 2.5vw, 1.65rem) !important;
+    line-height: 1.2;
+    letter-spacing: 0.055em;
+    font-weight: 400;
   }
 
+  /* Subtitles / descriptions */
+  .subtitle,
+  .hero-subtitle,
+  .section-subtitle,
+  .description,
+  .subtext {
+    font-size: clamp(.72rem, 1.4vw, .9rem) !important;
+    line-height: 1.6;
+    letter-spacing: 0.035em;
+  }
+
+  /* Bubble ticker */
+  .bubble .symbol,
+  .bubble .ticker,
+  .ticker-symbol {
+    font-size: clamp(1rem, 2vw, 1.35rem) !important;
+    line-height: 1.15;
+    letter-spacing: 0.09em;
+    font-weight: 400;
+    text-transform: uppercase;
+    text-shadow:
+      0 0 7px currentColor,
+      0 0 16px currentColor;
+  }
+
+  /* Bubble supporting text */
+  .bubble .direction,
+  .bubble .badge,
+  .bubble .category,
+  .bubble .setup,
+  .bubble .meta {
+    font-size: .62rem !important;
+    line-height: 1.35;
+    letter-spacing: .06em;
+  }
+
+  /* Popped ticker */
   .detail-card .ticker,
   .detail-card .symbol {
-    font-family: 'Audiowide', sans-serif;
-    letter-spacing: 0.1em;
+    font-size: clamp(1.7rem, 4vw, 2.8rem) !important;
+    line-height: 1.1;
+    letter-spacing: .1em;
+    font-weight: 400;
     text-shadow:
       0 0 10px currentColor,
       0 0 24px currentColor;
   }
 
-  .detail-card .label,
-  .detail-card .value,
-  .detail-card .level,
-  .detail-card .tp {
-    font-family: 'Nunito', sans-serif;
+  /* Detail section headings */
+  .detail-card h2,
+  .detail-card h3,
+  .detail-card .detail-title {
+    font-size: clamp(.9rem, 1.8vw, 1.2rem) !important;
+    line-height: 1.25;
+    letter-spacing: .055em;
   }
 
-  .category-title {
-    letter-spacing: 0.06em;
+  /* Labels */
+  .detail-card .label,
+  .detail-card .key,
+  .detail-card .field-label {
+    font-size: .58rem !important;
+    line-height: 1.35;
+    letter-spacing: .055em;
+  }
+
+  /* Actual information */
+  .detail-card .value,
+  .detail-card .level,
+  .detail-card .trigger,
+  .detail-card .invalidation,
+  .detail-card .option {
+    font-size: .72rem !important;
+    line-height: 1.5;
+    letter-spacing: .025em;
+  }
+
+  /* Targets get slightly more visual weight */
+  .detail-card .tp,
+  .detail-card .target,
+  .detail-card .targets {
+    font-size: .82rem !important;
+    line-height: 1.45;
+    letter-spacing: .04em;
+  }
+
+  /* Category badges */
+  .category-badge,
+  .account-category,
+  .capital-category {
+    font-size: .56rem !important;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+  }
+
+  /* Buttons */
+  button {
+    font-size: .7rem !important;
+    letter-spacing: .055em;
+  }
+
+  /* Small status / secondary information */
+  .status,
+  .market-state,
+  .empty-state,
+  .footer,
+  small {
+    font-size: .55rem !important;
+    line-height: 1.5;
+    letter-spacing: .04em;
   }
 </style>
 
