@@ -37,35 +37,55 @@ export default {
       const items = [];
 
       for (const ticker of symbols) {
-        const quote = await getQuoteWithFallback(ticker, env);
+        try {
+          const quote = await getQuoteWithFallback(ticker, env);
 
-        if (!quote?.ok || !quote.data) continue;
+          if (!quote?.ok || !quote.data) continue;
 
-        const price = Number(quote.data.price);
-        const previousClose = Number(
-          quote.data.prevClose ??
-          quote.data.previousClose ??
-          quote.data.prev_close
-        );
+          const price = Number(quote.data.price);
 
-        if (!Number.isFinite(price)) continue;
+          if (!Number.isFinite(price)) continue;
 
-        const change =
-          Number.isFinite(previousClose)
-            ? price - previousClose
-            : null;
+          // Use daily bars to calculate the previous close.
+          // This works during market hours and after the market closes.
+          const daily = await providers.quotesPrimary.getBars(
+            ticker,
+            'daily',
+            10 * 24 * 3600 * 1000,
+            env,
+          );
 
-        const changePct =
-          Number.isFinite(previousClose) && previousClose !== 0
-            ? (change / previousClose) * 100
-            : null;
+          let previousClose = null;
 
-        items.push({
-          ticker,
-          price,
-          change,
-          changePct,
-        });
+          if (daily?.ok && Array.isArray(daily.data)) {
+            const bars = daily.data
+              .filter(b => Number.isFinite(Number(b.close)))
+              .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+            if (bars.length >= 2) {
+              previousClose = Number(bars[bars.length - 2].close);
+            }
+          }
+
+          const change =
+            Number.isFinite(previousClose)
+              ? price - previousClose
+              : null;
+
+          const changePct =
+            Number.isFinite(previousClose) && previousClose !== 0
+              ? (change / previousClose) * 100
+              : null;
+
+          items.push({
+            ticker,
+            price,
+            change,
+            changePct,
+          });
+        } catch (error) {
+          console.error(`Ticker failed for ${ticker}:`, error);
+        }
       }
 
       return new Response(
