@@ -47,26 +47,72 @@ export default {
 
           if (!daily?.ok || !Array.isArray(daily.data)) continue;
 
-          const bars = daily.data
+          const dailyBars = daily.data
             .filter(b => Number.isFinite(Number(b.close)))
             .sort((a, b) => new Date(a.time) - new Date(b.time));
 
-          if (bars.length < 2) continue;
+          if (dailyBars.length < 2) continue;
 
-          const lastBar = bars[bars.length - 1];
-          const previousBar = bars[bars.length - 2];
-
-          const regularClose = Number(lastBar.close);
+          const previousBar = dailyBars[dailyBars.length - 2];
           const previousClose = Number(previousBar.close);
 
-          if (!Number.isFinite(regularClose) ||
-              !Number.isFinite(previousClose)) {
-            continue;
+          if (!Number.isFinite(previousClose)) continue;
+
+          let regularClose = Number(dailyBars[dailyBars.length - 1].close);
+
+          // Use today's 1-minute bars to get the actual regular-session
+          // closing print instead of relying on the daily bar.
+          const intraday = await providers.quotesPrimary.getBars(
+            ticker,
+            '1min',
+            24 * 3600 * 1000,
+            env,
+          );
+
+          if (intraday?.ok && Array.isArray(intraday.data)) {
+            const regularBars = intraday.data
+              .filter(b => Number.isFinite(Number(b.close)))
+              .filter(b => {
+                const d = new Date(b.time);
+
+                const parts = new Intl.DateTimeFormat('en-US', {
+                  timeZone: 'America/New_York',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hourCycle: 'h23',
+                }).formatToParts(d);
+
+                const values = Object.fromEntries(
+                  parts.map(p => [p.type, p.value]),
+                );
+
+                const hour = Number(values.hour);
+                const minute = Number(values.minute);
+
+                return hour >= 9 && (
+                  hour > 9 ||
+                  minute >= 30
+                ) && (
+                  hour < 16
+                );
+              })
+              .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+            if (regularBars.length > 0) {
+              regularClose = Number(
+                regularBars[regularBars.length - 1].close,
+              );
+            }
           }
+
+          if (!Number.isFinite(regularClose)) continue;
 
           let price = regularClose;
 
-          // During regular trading hours, use the live quote.
+          // During regular trading hours, show the live quote.
           if (status.status === 'regular') {
             const quote = await getQuoteWithFallback(ticker, env);
 
@@ -80,12 +126,12 @@ export default {
           }
 
           const change = regularClose - previousClose;
+
           const changePct =
             previousClose !== 0
               ? (change / previousClose) * 100
               : null;
 
-          // During regular hours, calculate the live intraday move.
           const displayChange =
             status.status === 'regular'
               ? price - previousClose
