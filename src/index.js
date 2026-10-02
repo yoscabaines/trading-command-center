@@ -6,6 +6,7 @@ import { runPipelineForBatch } from './engine/pipeline.js';
 import { getMarketStatus } from './engine/marketHours.js';
 import { listRecentJournal, finalizeOutcome, evaluateAtClose } from './journal/journal.js';
 import { getQuoteWithFallback } from './providers/index.js';
+import { getMorningWatchlist } from './engine/morning.js';
 import { saveMorningWatchlist } from './engine/morning.js';
 
 export default {
@@ -16,6 +17,72 @@ export default {
       return new Response(indexHtml, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
     if (url.pathname === '/api/status') return handleStatus(env);
+
+    if (url.pathname === '/api/ticker') {
+      const status = getMarketStatus();
+
+      const symbols = new Set(['IWM']);
+
+      if (env.SETUPS_KV) {
+        const watchlist = await getMorningWatchlist(env.SETUPS_KV);
+
+        for (const candidate of [
+          ...(watchlist?.topWatch || []),
+          ...(watchlist?.additionalWatch || []),
+        ]) {
+          if (candidate?.ticker) symbols.add(candidate.ticker);
+        }
+      }
+
+      const items = [];
+
+      for (const ticker of symbols) {
+        const quote = await getQuoteWithFallback(ticker, env);
+
+        if (!quote?.ok || !quote.data) continue;
+
+        const price = Number(quote.data.price);
+        const previousClose = Number(
+          quote.data.prevClose ??
+          quote.data.previousClose ??
+          quote.data.prev_close
+        );
+
+        if (!Number.isFinite(price)) continue;
+
+        const change =
+          Number.isFinite(previousClose)
+            ? price - previousClose
+            : null;
+
+        const changePct =
+          Number.isFinite(previousClose) && previousClose !== 0
+            ? (change / previousClose) * 100
+            : null;
+
+        items.push({
+          ticker,
+          price,
+          change,
+          changePct,
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          marketStatus: status,
+          items,
+          updatedAt: new Date().toISOString(),
+        }),
+        {
+          headers: {
+            'content-type': 'application/json; charset=utf-8',
+            'cache-control': 'no-store',
+          },
+        },
+      );
+    }
+
     if (url.pathname === '/api/setups') return handleSetups(env, url);
     if (url.pathname === '/api/journal') return handleJournal(env);
     if (url.pathname === '/api/config') return handleConfig(url);
