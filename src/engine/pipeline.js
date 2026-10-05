@@ -49,6 +49,13 @@ export async function runPipelineForBatch(tickers, env) {
     scanned: 0,
     pricePassed: 0,
     quotePassed: 0,
+    quoteRejected: 0,
+    quoteFreshness: {
+      live: 0,
+      delayed: 0,
+      stale: 0,
+      unavailable: 0,
+    },
     dailyBarsPassed: 0,
     liquidityPassed: 0,
     intradayPassed: 0,
@@ -77,6 +84,24 @@ export async function runPipelineForBatch(tickers, env) {
 
       diagnostics.pricePassed++;
 
+      const quoteAge = quote?.sourceTimestamp
+        ? Date.now() - quote.sourceTimestamp
+        : null;
+
+      let quoteFreshness = 'unavailable';
+
+      if (quote?.sourceTimestamp) {
+        if (quoteAge <= 2.5 * 60 * 1000) {
+          quoteFreshness = 'live';
+        } else if (quoteAge <= 5 * 60 * 1000) {
+          quoteFreshness = 'delayed';
+        } else {
+          quoteFreshness = 'stale';
+        }
+      }
+
+      diagnostics.quoteFreshness[quoteFreshness]++;
+
       if (
         !quote.ok ||
         !isDecisionGrade(
@@ -84,6 +109,7 @@ export async function runPipelineForBatch(tickers, env) {
           quote.sourceTimestamp,
         )
       ) {
+        diagnostics.quoteRejected++;
         continue;
       }
 
