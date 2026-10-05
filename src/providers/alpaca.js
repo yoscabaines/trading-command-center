@@ -101,13 +101,9 @@ export class AlpacaQuoteProvider extends QuoteProvider {
       },
     );
 
-    if (!bars.ok) return bars;
-
-    const todayBars = normalizeBars(bars.data?.bars);
-
-    if (todayBars.length === 0) {
-      return unavailable(`No intraday bars returned for ${ticker}`);
-    }
+    const todayBars = bars.ok
+      ? normalizeBars(bars.data?.bars)
+      : [];
 
     const first = todayBars[0];
 
@@ -116,10 +112,16 @@ export class AlpacaQuoteProvider extends QuoteProvider {
       data: {
         price: Number(trade.p),
         prevClose: null,
-        open: first.open,
-        high: Math.max(...todayBars.map((b) => b.high)),
-        low: Math.min(...todayBars.map((b) => b.low)),
-        volume: todayBars.reduce((sum, b) => sum + b.volume, 0),
+        open: first?.open ?? Number(trade.p),
+        high: todayBars.length
+          ? Math.max(...todayBars.map((b) => b.high))
+          : Number(trade.p),
+        low: todayBars.length
+          ? Math.min(...todayBars.map((b) => b.low))
+          : Number(trade.p),
+        volume: todayBars.length
+          ? todayBars.reduce((sum, b) => sum + b.volume, 0)
+          : 0,
         change: null,
         changePct: null,
       },

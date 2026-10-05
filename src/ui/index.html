@@ -989,6 +989,54 @@
         .join('');
     }
 
+    async function loadDashboard() {
+      try {
+        const response = await fetch(API.setups);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Scanner request failed');
+        }
+
+        const candidates = data.candidates || {};
+
+        renderList(
+          'topWatch',
+          'topCount',
+          Array.isArray(candidates.topWatch)
+            ? candidates.topWatch
+            : []
+        );
+
+        renderList(
+          'additionalWatch',
+          'additionalCount',
+          Array.isArray(candidates.additionalWatch)
+            ? candidates.additionalWatch
+            : []
+        );
+
+        if (data.marketStatus?.status) {
+          document.getElementById('marketStatus').textContent =
+            String(data.marketStatus.status).toUpperCase();
+        }
+      } catch (error) {
+        document.getElementById('topWatch').innerHTML = `
+          <div class="empty">
+            Scanner unavailable.
+          </div>
+        `;
+
+        document.getElementById('additionalWatch').innerHTML = `
+          <div class="empty">
+            Unable to load candidates.
+          </div>
+        `;
+      }
+    }
+
+    loadDashboard();
+
 
 
     setInterval(loadDashboard, 60000);

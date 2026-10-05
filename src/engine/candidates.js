@@ -1,4 +1,4 @@
-const MAX_CANDIDATES = 6;
+const MAX_CANDIDATES = 5;
 
 function num(value) {
   const n = Number(value);

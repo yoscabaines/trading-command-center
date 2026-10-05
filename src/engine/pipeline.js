@@ -12,9 +12,7 @@
 
 import { providers, getQuoteWithFallback } from '../providers/index.js';
 import { assessLiquidity } from './liquidity.js';
-import { buildCandidate, selectMorningCandidates } from './candidates.js';
 import { buildTechnicalContext } from './technical.js';
-import { buildCandidateList } from './candidates.js';
 import {
   detectAllSetups,
   SETUP_STATE,
@@ -25,9 +23,11 @@ import { calculateTargets } from './targets.js';
 import { recordSetupSnapshot } from '../journal/journal.js';
 import { isDecisionGrade } from './freshness.js';
 import { getMarketStatus } from './marketHours.js';
+import { buildCandidate, selectMorningCandidates } from './candidates.js';
 
 const IN_PLAY_MIN_GAP_PCT = 2;
 const IN_PLAY_MIN_REL_VOLUME = 1.5;
+const SMALL_ACCOUNT_MAX_PRICE = 150;
 
 /**
  * Runs the scanner pipeline for one batch of tickers.
@@ -45,7 +45,19 @@ export async function runPipelineForBatch(tickers, env) {
   const candidateInputs = [];
   const errors = [];
 
+  const diagnostics = {
+    scanned: 0,
+    pricePassed: 0,
+    quotePassed: 0,
+    dailyBarsPassed: 0,
+    liquidityPassed: 0,
+    intradayPassed: 0,
+    candidateInputs: 0,
+  };
+
   for (const ticker of tickers) {
+    diagnostics.scanned++;
+
     try {
       // ---------------------------------------------------------------
       // Stage 1: quote + liquidity
@@ -56,6 +68,15 @@ export async function runPipelineForBatch(tickers, env) {
         env,
       );
 
+      const isIWM = ticker === 'IWM';
+      const price = Number(quote?.data?.price ?? quote?.price);
+
+      if (!isIWM && (!Number.isFinite(price) || price > SMALL_ACCOUNT_MAX_PRICE)) {
+        continue;
+      }
+
+      diagnostics.pricePassed++;
+
       if (
         !quote.ok ||
         !isDecisionGrade(
@@ -65,6 +86,8 @@ export async function runPipelineForBatch(tickers, env) {
       ) {
         continue;
       }
+
+      diagnostics.quotePassed++;
 
       const dailyBarsRes =
         await providers.quotesPrimary.getBars(
@@ -81,18 +104,18 @@ export async function runPipelineForBatch(tickers, env) {
         continue;
       }
 
+      diagnostics.dailyBarsPassed++;
+
       const liquidity = assessLiquidity({
         quote: quote.data,
         dailyBars: dailyBarsRes.data,
       });
 
       if (!liquidity.eligible) {
-        errors.push({
-          ticker,
-          error: `liquidity:${liquidity.reason}`,
-        });
         continue;
       }
+
+      diagnostics.liquidityPassed++;
 
       // ---------------------------------------------------------------
       // Stage 2: in-play filter
@@ -145,6 +168,8 @@ export async function runPipelineForBatch(tickers, env) {
         continue;
       }
 
+      diagnostics.intradayPassed++;
+
       // ---------------------------------------------------------------
       // Stage 4: separate premarket bars
       // ---------------------------------------------------------------
@@ -176,6 +201,8 @@ export async function runPipelineForBatch(tickers, env) {
           premarketBars,
           technicalContext: ctx,
         });
+
+        diagnostics.candidateInputs++;
 
         continue;
       }
@@ -310,5 +337,6 @@ export async function runPipelineForBatch(tickers, env) {
     candidates,
     errors,
     marketStatus,
+    diagnostics,
   };
 }
