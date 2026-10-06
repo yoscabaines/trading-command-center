@@ -10,6 +10,27 @@ function json(data, status = 200) {
 }
 
 /** GET /api/status */
+export async function handleDebugQuote(env, url) {
+  const ticker = url.searchParams.get('ticker')?.trim().toUpperCase() || 'AAPL';
+
+  const result = await providers.quotesPrimary.getQuote(ticker, env);
+
+  return json({
+    ticker,
+    ok: result.ok,
+    reason: result.reason || null,
+    price: result.data?.price ?? null,
+    sourceTimestamp: result.sourceTimestamp || null,
+    sourceTime: result.sourceTimestamp
+      ? new Date(result.sourceTimestamp).toISOString()
+      : null,
+    ageSeconds: result.sourceTimestamp
+      ? Math.round((Date.now() - result.sourceTimestamp) / 1000)
+      : null,
+    retrievedTimestamp: result.retrievedTimestamp || null,
+  });
+}
+
 export async function handleStatus(env) {
   const q = env.QUEUE_KV ? await queueStatus(env.QUEUE_KV) : { depth: 0, oldestAgeMs: 0, itemsNearRetryLimit: 0 };
   return json({

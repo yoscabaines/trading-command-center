@@ -1,5 +1,5 @@
 import indexHtml from './ui/index.html';
-import { handleStatus, handleSetups, handleJournal, handleConfig } from './api/routes.js';
+import { handleStatus, handleSetups, handleJournal, handleConfig, handleDebugQuote } from './api/routes.js';
 import { providers } from './providers/index.js';
 import { enqueue, dequeueBatch, markProcessed } from './engine/queue.js';
 import { runPipelineForBatch } from './engine/pipeline.js';
@@ -17,6 +17,7 @@ export default {
       return new Response(indexHtml, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
     if (url.pathname === '/api/status') return handleStatus(env);
+    if (url.pathname === '/api/debug/quote') return handleDebugQuote(env, url);
 
     if (url.pathname === '/api/ticker-debug') {
       const daily = await providers.quotesPrimary.getBars(
