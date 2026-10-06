@@ -10,6 +10,35 @@ function json(data, status = 200) {
 }
 
 /** GET /api/status */
+export async function handleDebugBars(env, url) {
+  const ticker = url.searchParams.get('ticker')?.trim().toUpperCase() || 'AAPL';
+
+  const result = await providers.quotesPrimary.getBars(
+    ticker,
+    '1min',
+    12 * 3600 * 1000,
+    env,
+  );
+
+  const bars = result.ok ? result.data : [];
+
+  return json({
+    ticker,
+    ok: result.ok,
+    reason: result.reason || null,
+    count: bars.length,
+    firstBar: bars[0] || null,
+    latestBar: bars.at(-1) || null,
+    sourceTimestamp: result.sourceTimestamp || null,
+    sourceTime: result.sourceTimestamp
+      ? new Date(result.sourceTimestamp).toISOString()
+      : null,
+    ageSeconds: result.sourceTimestamp
+      ? Math.round((Date.now() - result.sourceTimestamp) / 1000)
+      : null,
+  });
+}
+
 export async function handleDebugQuote(env, url) {
   const ticker = url.searchParams.get('ticker')?.trim().toUpperCase() || 'AAPL';
 
