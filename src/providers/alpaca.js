@@ -73,7 +73,7 @@ export class AlpacaQuoteProvider extends QuoteProvider {
     const latest = await alpacaFetch(
       env,
       `/stocks/${encodeURIComponent(ticker)}/trades/latest`,
-      { feed: 'iex' },
+      { feed: 'sip' },
     );
 
     const trade = latest.ok ? latest.data?.trade : null;
@@ -90,7 +90,7 @@ export class AlpacaQuoteProvider extends QuoteProvider {
       {
         timeframe: '1Min',
         start: start.toISOString(),
-        feed: 'iex',
+        feed: 'sip',
         limit: 10000,
       },
     );
@@ -173,7 +173,7 @@ export class AlpacaQuoteProvider extends QuoteProvider {
         timeframe,
         start: start.toISOString(),
         end: end.toISOString(),
-        feed: 'iex',
+        feed: 'sip',
         limit: 10000,
       },
     );
